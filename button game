@@ -1,0 +1,194 @@
+import tkinter as tk
+from tkinter import Toplevel
+import random
+import time
+
+# --- Setup and Configuration ---
+# You can change these values to customize your pet!
+
+# !!! IMPORTANT: Replace "YOUR_PET_FILE_NAME.gif" with the actual name of your file. !!!
+# Example: PET_GIF_PATH = "D:/my_pet.gif"
+PET_GIF_PATH = "D:/skull-laughing.gif"
+
+PET_WIDTH = 200
+PET_HEIGHT = 200
+
+# The quotes that your pet will say. Feel free to add your own!
+QUOTES = [
+    "You’re not afraid of failure… you're afraid of what you'd become if you actually tried.",
+    "I’ve seen your future… and it's terrifying… because you’re unstoppable once you awaken.",
+    "Rest if you must… but know that while you sleep, your destiny grows impatient.",
+    "They buried you in doubt… but they forgot you were made to rise.",
+    "Every excuse you make is another chain you wrap around your potential.",
+    "The person you fear becoming… already lives inside you, begging to be unleashed.",
+    "I haunt you not to scare you… but to remind you: you are meant for more.",
+    "Your comfort is a coffin. And I’m the voice scratching from inside, begging you to break out.",
+    "You’re not behind. You’re just standing still in a world that’s already forgotten you.",
+    "I whisper not from the shadows… but from your own ambition. You hear me because deep down, you know I'm right."
+]
+
+# Random time in seconds between each quote pop-up.
+MIN_QUOTE_INTERVAL = 5  # Reduced for quicker demonstration
+MAX_QUOTE_INTERVAL = 15 # Reduced for quicker demonstration
+
+# Random time in seconds between each movement.
+MIN_MOVE_INTERVAL = 5   # seconds
+MAX_MOVE_INTERVAL = 20  # seconds
+
+# --- Main Application Logic ---
+
+class DesktopPet:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Desktop Pet")
+
+        # Configure the main window for the pet
+        self.root.overrideredirect(True)  # Removes title bar and borders
+        self.root.wm_attributes("-topmost", True)  # Stays on top of other windows
+        self.root.wm_attributes("-transparentcolor", "#ffffff") # Makes white background transparent
+        
+        self.root.geometry(f'{PET_WIDTH}x{PET_HEIGHT}+{random.randint(0, 1000)}+{random.randint(0, 600)}')
+        self.root.bind("<B1-Motion>", self.start_drag)
+        self.root.bind("<Button-1>", self.on_click)
+        self.root.bind("<ButtonRelease-1>", self.stop_drag)
+        
+        self.x = 0
+        self.y = 0
+        self.start_x = 0
+        self.start_y = 0
+
+        # Load the animated GIF
+        self.frames = self.load_gif_frames()
+        self.frame_count = len(self.frames)
+        self.current_frame = 0
+
+        # Create a label to display the GIF
+        self.label = tk.Label(root, bd=0, bg='white')
+        self.label.pack()
+
+        # Start the animation loop
+        self.animate_gif()
+        
+        # Start the idle movement loop
+        self.move_pet()
+        
+        # Start the quote generation loop
+        self.schedule_next_quote()
+
+    def load_gif_frames(self):
+        """Loads all frames from the GIF."""
+        frames = []
+        try:
+            gif = tk.PhotoImage(file=PET_GIF_PATH)
+            for frame_index in range(1000): # Assuming a max of 1000 frames
+                try:
+                    frame = tk.PhotoImage(file=PET_GIF_PATH, format=f'gif -index {frame_index}')
+                    frames.append(frame)
+                except tk.TclError:
+                    break
+        except tk.TclError:
+            print("Error: Could not load the GIF. Please check the file path.")
+            return []
+        return frames
+
+    def animate_gif(self):
+        """Cycles through the frames of the GIF to create animation."""
+        if not self.frames:
+            return
+
+        # Display the current frame
+        self.label.config(image=self.frames[self.current_frame])
+        
+        # Move to the next frame
+        self.current_frame = (self.current_frame + 1) % self.frame_count
+        
+        # Schedule the next frame update (adjust the time for faster/slower animation)
+        self.root.after(100, self.animate_gif)
+
+    def start_drag(self, event):
+        """Starts the drag operation on mouse click."""
+        self.x = self.root.winfo_x()
+        self.y = self.root.winfo_y()
+        self.start_x = event.x_root
+        self.start_y = event.y_root
+
+    def on_click(self, event):
+        """Saves the initial click position."""
+        self.start_x = event.x_root
+        self.start_y = event.y_root
+
+    def stop_drag(self, event):
+        """Updates the window position after a drag."""
+        dx = event.x_root - self.start_x
+        dy = event.y_root - self.start_y
+        self.root.geometry(f"+{self.x + dx}+{self.y + dy}")
+
+    def move_pet(self):
+        """Moves the pet to a new random location on the screen."""
+        screen_width = self.root.winfo_screenwidth()
+        screen_height = self.root.winfo_screenheight()
+        
+        # Randomly choose a new position, ensuring the pet stays on screen.
+        new_x = random.randint(0, screen_width - PET_WIDTH)
+        new_y = random.randint(0, screen_height - PET_HEIGHT)
+        
+        self.root.geometry(f'+{new_x}+{new_y}')
+        
+        # Schedule the next move at a random interval.
+        next_move_time = random.randint(MIN_MOVE_INTERVAL * 1000, MAX_MOVE_INTERVAL * 1000)
+        self.root.after(next_move_time, self.move_pet)
+
+    def show_quote_popup(self):
+        """Creates and displays a pop-up window with a random quote."""
+        quote_text = "▶️ " + random.choice(QUOTES) # Added the pointer
+        
+        # Create a new top-level window for the pop-up.
+        popup = Toplevel(self.root)
+        popup.overrideredirect(True)
+        popup.wm_attributes("-topmost", True)
+        
+        # Updated styling for a more attractive pop-up (dark box)
+        popup.configure(bg='#2c2c2c', padx=15, pady=15, bd=2, relief='raised')
+
+        # Create a label for the quote.
+        quote_label = tk.Label(popup, text=quote_text, font=("Helvetica", 11), fg="white", bg='#2c2c2c', wraplength=200)
+        quote_label.pack()
+        
+        # Force the window to update and calculate its size
+        popup.update_idletasks()
+        
+        # Get the new required dimensions for the pop-up
+        popup_width = popup.winfo_reqwidth()
+        popup_height = popup.winfo_reqheight()
+
+        # Position the pop-up relative to the pet with the new dimensions
+        pet_x = self.root.winfo_x()
+        pet_y = self.root.winfo_y()
+        screen_width = self.root.winfo_screenwidth()
+
+        # Check if there is enough space on the right side
+        if pet_x + PET_WIDTH + popup_width < screen_width:
+            # Position to the right of the pet
+            popup.geometry(f'{popup_width}x{popup_height}+{pet_x + PET_WIDTH}+{pet_y}')
+        else:
+            # Position to the left of the pet
+            popup.geometry(f'{popup_width}x{popup_height}+{pet_x - popup_width}+{pet_y}')
+
+        # Schedule the pop-up to close automatically after a few seconds.
+        popup.after(5000, popup.destroy)
+
+        # Schedule the next quote.
+        self.schedule_next_quote()
+
+    def schedule_next_quote(self):
+        """Schedules the next quote pop-up at a random interval."""
+        next_quote_time = random.randint(MIN_QUOTE_INTERVAL * 1000, MAX_QUOTE_INTERVAL * 1000)
+        print(f"Next quote scheduled in {next_quote_time / 1000} seconds.")
+        self.root.after(next_quote_time, self.show_quote_popup)
+
+if __name__ == "__main__":
+    # The main Tkinter loop starts here.
+    root = tk.Tk()
+    app = DesktopPet(root)
+    root.mainloop()
+
